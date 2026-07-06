@@ -6,50 +6,98 @@ const BASE_URL = "https://demohotelsapi.pythonanywhere.com/api";
 
 function Home() {
   const [hotels, setHotels] = useState([]);
+  const [filteredHotels, setFilteredHotels] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const [search, setSearch] = useState("");
   const [location, setLocation] = useState("");
-  const [rating, setRating] = useState("");
+
+  const [minPrice, setMinPrice] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
+
+  const [minRating, setMinRating] = useState("");
+  const [maxRating, setMaxRating] = useState("");
+
   const [sort, setSort] = useState("");
 
   const [page, setPage] = useState(1);
 
   const limit = 12;
-  const totalHotels = 194;
-  const totalPages = Math.ceil(totalHotels / limit);
 
   useEffect(() => {
-    async function fetchHotels() {
-      setLoading(true);
+    fetchHotels();
+  }, [page, minPrice, maxPrice, minRating, maxRating]);
 
-      try {
-        const params = new URLSearchParams();
+  const fetchHotels = async () => {
+    setLoading(true);
 
-        params.append("limit", limit);
-        params.append("skip", (page - 1) * limit);
+    try {
+      const params = new URLSearchParams();
 
-        if (search) params.append("search", search);
-        if (location) params.append("location", location);
-        if (rating) params.append("rating", rating);
-        if (sort) params.append("sort", sort);
+      params.append("limit", limit);
+      params.append("skip", (page - 1) * limit);
 
-        const response = await fetch(
-          `${BASE_URL}/hotels/?${params.toString()}`
-        );
+      if (minPrice !== "") params.append("price__gte", minPrice);
+      if (maxPrice !== "") params.append("price__lte", maxPrice);
 
-        const data = await response.json();
+      if (minRating !== "") params.append("rating__gte", minRating);
+      if (maxRating !== "") params.append("rating__lte", maxRating);
 
-        setHotels(data);
-      } catch (err) {
-        console.log(err);
-      }
+      const response = await fetch(
+        `${BASE_URL}/hotels/?${params.toString()}`
+      );
 
-      setLoading(false);
+      const data = await response.json();
+
+      setHotels(data);
+      setFilteredHotels(data);
+    } catch (err) {
+      console.log(err);
     }
 
-    fetchHotels();
-  }, [page, search, location, rating, sort]);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    let result = [...hotels];
+
+    if (search) {
+      result = result.filter(
+        (hotel) =>
+          hotel.name.toLowerCase().includes(search.toLowerCase()) ||
+          hotel.location.toLowerCase().includes(search.toLowerCase())
+      );
+    }
+
+    if (location) {
+      result = result.filter(
+        (hotel) => hotel.location === location
+      );
+    }
+
+    switch (sort) {
+      case "priceLow":
+        result.sort((a, b) => Number(a.price) - Number(b.price));
+        break;
+
+      case "priceHigh":
+        result.sort((a, b) => Number(b.price) - Number(a.price));
+        break;
+
+      case "rating":
+        result.sort((a, b) => b.rating - a.rating);
+        break;
+
+      case "name":
+        result.sort((a, b) => a.name.localeCompare(b.name));
+        break;
+
+      default:
+        break;
+    }
+
+    setFilteredHotels(result);
+  }, [search, location, sort, hotels]);
 
   return (
     <>
@@ -63,70 +111,81 @@ function Home() {
 
           <input
             type="text"
-            placeholder="Search hotel or location..."
+            placeholder="Search..."
             value={search}
-            onChange={(e) => {
-              setPage(1);
-              setSearch(e.target.value);
-            }}
+            onChange={(e) => setSearch(e.target.value)}
           />
 
           <select
             value={location}
-            onChange={(e) => {
-              setPage(1);
-              setLocation(e.target.value);
-            }}
+            onChange={(e) => setLocation(e.target.value)}
           >
             <option value="">All Cities</option>
-            <option value="Ahmedabad">Ahmedabad</option>
-            <option value="Bengaluru">Bengaluru</option>
-            <option value="Chennai">Chennai</option>
-            <option value="Delhi">Delhi</option>
-            <option value="Goa">Goa</option>
-            <option value="Gurgaon">Gurgaon</option>
-            <option value="Hyderabad">Hyderabad</option>
-            <option value="Jaipur">Jaipur</option>
-            <option value="Kolkata">Kolkata</option>
-            <option value="Mumbai">Mumbai</option>
-            <option value="Noida">Noida</option>
-            <option value="Pune">Pune</option>
+            <option>Ahmedabad</option>
+            <option>Bengaluru</option>
+            <option>Chennai</option>
+            <option>Delhi</option>
+            <option>Goa</option>
+            <option>Gurgaon</option>
+            <option>Hyderabad</option>
+            <option>Jaipur</option>
+            <option>Kolkata</option>
+            <option>Mumbai</option>
+            <option>Noida</option>
+            <option>Pune</option>
           </select>
 
-          <select
-            value={rating}
-            onChange={(e) => {
-              setPage(1);
-              setRating(e.target.value);
-            }}
-          >
-            <option value="">All Ratings</option>
-            <option value="4">4★ & Above</option>
-            <option value="4.5">4.5★ & Above</option>
-          </select>
+          <input
+            type="number"
+            placeholder="Min Price"
+            value={minPrice}
+            onChange={(e) => setMinPrice(e.target.value)}
+          />
+
+          <input
+            type="number"
+            placeholder="Max Price"
+            value={maxPrice}
+            onChange={(e) => setMaxPrice(e.target.value)}
+          />
+
+          <input
+            type="number"
+            placeholder="Min Rating"
+            min="0"
+            max="5"
+            step="0.1"
+            value={minRating}
+            onChange={(e) => setMinRating(e.target.value)}
+          />
+
+          <input
+            type="number"
+            placeholder="Max Rating"
+            min="0"
+            max="5"
+            step="0.1"
+            value={maxRating}
+            onChange={(e) => setMaxRating(e.target.value)}
+          />
 
           <select
             value={sort}
-            onChange={(e) => {
-              setPage(1);
-              setSort(e.target.value);
-            }}
+            onChange={(e) => setSort(e.target.value)}
           >
             <option value="">Sort By</option>
-            <option value="price">Price Low → High</option>
-            <option value="-price">Price High → Low</option>
-            <option value="rating">Rating Low → High</option>
-            <option value="-rating">Rating High → Low</option>
-            <option value="name">Name A → Z</option>
-            <option value="-name">Name Z → A</option>
+            <option value="priceLow">Price Low → High</option>
+            <option value="priceHigh">Price High → Low</option>
+            <option value="rating">Highest Rating</option>
+            <option value="name">A → Z</option>
           </select>
 
         </div>
 
         {loading ? (
-          <h2>Loading Hotels...</h2>
+          <h2>Loading...</h2>
         ) : (
-          <HotelList hotels={hotels} />
+          <HotelList hotels={filteredHotels} />
         )}
 
         <div className="pagination">
@@ -138,12 +197,9 @@ function Home() {
             Previous
           </button>
 
-          <span>
-            Page {page} of {totalPages}
-          </span>
+          <span>Page {page}</span>
 
           <button
-            disabled={page === totalPages}
             onClick={() => setPage((prev) => prev + 1)}
           >
             Next
