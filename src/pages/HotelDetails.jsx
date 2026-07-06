@@ -1,63 +1,105 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
+import Navbar from "../components/Navbar";
+
+const BASE_URL = "https://demohotelsapi.pythonanywhere.com/api";
 
 function HotelDetails() {
-
   const { id } = useParams();
+  const navigate = useNavigate();
 
   const [hotel, setHotel] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-
-    fetch(`https://demohotelsapi.pythonanywhere.com/api/hotels/${id}`)
-
+    fetch(`${BASE_URL}/hotels/${id}`)
       .then((res) => res.json())
-
       .then((data) => {
         setHotel(data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.log(err);
+        setLoading(false);
       });
-
   }, [id]);
 
-  if (!hotel) return <h2>Loading...</h2>;
+  if (loading) {
+    return (
+      <>
+        <Navbar />
+        <h2 style={{ textAlign: "center", marginTop: "40px" }}>
+          Loading...
+        </h2>
+      </>
+    );
+  }
+
+  if (!hotel) {
+    return (
+      <>
+        <Navbar />
+        <h2 style={{ textAlign: "center", marginTop: "40px" }}>
+          Hotel not found.
+        </h2>
+      </>
+    );
+  }
 
   return (
+    <>
+      <Navbar />
 
-    <div className="details">
+      <div className="details-container">
 
-      <img
-        src={hotel.thumbnail}
-        alt={hotel.name}
-      />
+        <button
+          className="back-btn"
+          onClick={() => navigate(-1)}
+        >
+          ← Back
+        </button>
 
-      <h1>{hotel.name}</h1>
+        <img
+          src={hotel.thumbnail}
+          alt={hotel.name}
+          className="details-image"
+        />
 
-      <p>📍 {hotel.location}</p>
+        <h1>{hotel.name}</h1>
 
-      <p>⭐ {hotel.rating}</p>
+        <p>
+          <strong>📍 Location:</strong> {hotel.location}
+        </p>
 
-      <h2>₹ {hotel.price}</h2>
+        <p>
+          <strong>⭐ Rating:</strong> {hotel.rating}
+        </p>
 
-      <p>{hotel.description}</p>
+        <p>
+          <strong>💰 Price:</strong> ₹{hotel.price}
+        </p>
 
-      <h3>Gallery</h3>
+        <p className="hotel-description">
+          {hotel.description}
+        </p>
 
-      <div className="gallery">
+        <h2>Gallery</h2>
 
-        {hotel.photos.map((photo, index) => (
+        <div className="gallery">
 
-          <img
-            key={index}
-            src={photo}
-            alt={hotel.name}
-          />
+          {hotel.photos &&
+            hotel.photos.map((photo, index) => (
+              <img
+                key={index}
+                src={photo}
+                alt={`Hotel ${index + 1}`}
+              />
+            ))}
 
-        ))}
+        </div>
 
       </div>
-
-    </div>
-
+    </>
   );
 }
 
