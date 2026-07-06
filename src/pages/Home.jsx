@@ -6,19 +6,18 @@ const BASE_URL = "https://demohotelsapi.pythonanywhere.com/api";
 
 function Home() {
   const [hotels, setHotels] = useState([]);
-  const [filteredHotels, setFilteredHotels] = useState([]);
+  const [displayHotels, setDisplayHotels] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const [search, setSearch] = useState("");
   const [location, setLocation] = useState("");
+  const [sort, setSort] = useState("");
 
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
 
   const [minRating, setMinRating] = useState("");
   const [maxRating, setMaxRating] = useState("");
-
-  const [sort, setSort] = useState("");
 
   const [page, setPage] = useState(1);
 
@@ -28,7 +27,51 @@ function Home() {
     fetchHotels();
   }, [page, minPrice, maxPrice, minRating, maxRating]);
 
-  const fetchHotels = async () => {
+  useEffect(() => {
+    let filtered = [...hotels];
+
+    // Search
+    if (search) {
+      filtered = filtered.filter(
+        (hotel) =>
+          hotel.name.toLowerCase().includes(search.toLowerCase()) ||
+          hotel.location.toLowerCase().includes(search.toLowerCase())
+      );
+    }
+
+    // Location
+    if (location) {
+      filtered = filtered.filter(
+        (hotel) => hotel.location === location
+      );
+    }
+
+    // Sorting
+    switch (sort) {
+      case "priceLow":
+        filtered.sort((a, b) => Number(a.price) - Number(b.price));
+        break;
+
+      case "priceHigh":
+        filtered.sort((a, b) => Number(b.price) - Number(a.price));
+        break;
+
+      case "rating":
+        filtered.sort((a, b) => b.rating - a.rating);
+        break;
+
+      case "name":
+        filtered.sort((a, b) => a.name.localeCompare(b.name));
+        break;
+
+      default:
+        break;
+    }
+
+    setDisplayHotels(filtered);
+  }, [hotels, search, location, sort]);
+
+  async function fetchHotels() {
     setLoading(true);
 
     try {
@@ -37,11 +80,11 @@ function Home() {
       params.append("limit", limit);
       params.append("skip", (page - 1) * limit);
 
-      if (minPrice !== "") params.append("price__gte", minPrice);
-      if (maxPrice !== "") params.append("price__lte", maxPrice);
+      if (minPrice) params.append("price__gte", minPrice);
+      if (maxPrice) params.append("price__lte", maxPrice);
 
-      if (minRating !== "") params.append("rating__gte", minRating);
-      if (maxRating !== "") params.append("rating__lte", maxRating);
+      if (minRating) params.append("rating__gte", minRating);
+      if (maxRating) params.append("rating__lte", maxRating);
 
       const response = await fetch(
         `${BASE_URL}/hotels/?${params.toString()}`
@@ -50,54 +93,13 @@ function Home() {
       const data = await response.json();
 
       setHotels(data);
-      setFilteredHotels(data);
+      setDisplayHotels(data);
     } catch (err) {
       console.log(err);
     }
 
     setLoading(false);
-  };
-
-  useEffect(() => {
-    let result = [...hotels];
-
-    if (search) {
-      result = result.filter(
-        (hotel) =>
-          hotel.name.toLowerCase().includes(search.toLowerCase()) ||
-          hotel.location.toLowerCase().includes(search.toLowerCase())
-      );
-    }
-
-    if (location) {
-      result = result.filter(
-        (hotel) => hotel.location === location
-      );
-    }
-
-    switch (sort) {
-      case "priceLow":
-        result.sort((a, b) => Number(a.price) - Number(b.price));
-        break;
-
-      case "priceHigh":
-        result.sort((a, b) => Number(b.price) - Number(a.price));
-        break;
-
-      case "rating":
-        result.sort((a, b) => b.rating - a.rating);
-        break;
-
-      case "name":
-        result.sort((a, b) => a.name.localeCompare(b.name));
-        break;
-
-      default:
-        break;
-    }
-
-    setFilteredHotels(result);
-  }, [search, location, sort, hotels]);
+  }
 
   return (
     <>
@@ -105,13 +107,13 @@ function Home() {
 
       <div className="container">
 
-        <h1>Explore Hotels</h1>
+        <h1 className="page-title">StayPoint</h1>
 
         <div className="filters">
 
           <input
             type="text"
-            placeholder="Search..."
+            placeholder="Search hotels..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -174,25 +176,25 @@ function Home() {
             onChange={(e) => setSort(e.target.value)}
           >
             <option value="">Sort By</option>
-            <option value="priceLow">Price Low → High</option>
-            <option value="priceHigh">Price High → Low</option>
+            <option value="priceLow">Price: Low → High</option>
+            <option value="priceHigh">Price: High → Low</option>
             <option value="rating">Highest Rating</option>
-            <option value="name">A → Z</option>
+            <option value="name">Name A → Z</option>
           </select>
 
         </div>
 
         {loading ? (
-          <h2>Loading...</h2>
+          <h2 style={{ textAlign: "center" }}>Loading...</h2>
         ) : (
-          <HotelList hotels={filteredHotels} />
+          <HotelList hotels={displayHotels} />
         )}
 
         <div className="pagination">
 
           <button
             disabled={page === 1}
-            onClick={() => setPage((prev) => prev - 1)}
+            onClick={() => setPage(page - 1)}
           >
             Previous
           </button>
@@ -200,7 +202,8 @@ function Home() {
           <span>Page {page}</span>
 
           <button
-            onClick={() => setPage((prev) => prev + 1)}
+            disabled={hotels.length < limit}
+            onClick={() => setPage(page + 1)}
           >
             Next
           </button>
